@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    // "module": "commonjs",
+    // "esModuleInterop": true,
+    // "allowSyntheticDefaultImports": true,
+    "target": "ES5",
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "sourceMap": true,   // sourceMapを有効化するか？ 開発時はtrueでOK.
+    "outDir": "dist",    // コンパイル後の出力先
+    "baseUrl": ".",
+    "paths": {
+        "*": [
+            "node_modules/*",
+            "src/types/*"
+        ]
+    }
+  },
+  // コンパイル対象ファイル
+  "include": [
+      "src/**/*"
+  ],
+  // 除外フォルダ (追加)
+  "exclude": ["node_modules", "dist"]
+}
