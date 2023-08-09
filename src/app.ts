@@ -88,6 +88,7 @@ export class App<State, Actions> {
       // このelementはトップレベルのノード(#appが指定されているノード)
       // このappendChildで画面に反映されている
       // createElementを実行することで、仮想DOMを元にリアルDOMに追加するリアルDOMツリーを生成している。そのDOMツリーをappendChildに渡している
+      // appendChildはNodeインターフェースのメソッドで、引数には、HTMLElement | Textを指定する
       this.element.appendChild(createElement(this.newNode));
     }
 

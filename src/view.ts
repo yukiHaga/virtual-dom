@@ -1,10 +1,9 @@
-// 仮想DOM
+// 仮想DOMが満たすべきインターフェース
 export interface VNode {
   nodeName: keyof HTMLElementTagNameMap;
   attributes: Attributes;
   children: NodeType[];
 }
-
 
 type NodeType = VNode | string | number;
 type Attributes = { [key: string]: string | Function };
@@ -57,6 +56,8 @@ export function createElement(node: NodeType): HTMLElement | Text {
 
   // 上のif文を突破したら、nodeはNodeTypeではなくて、VNodeになる
   // createElementメソッドに仮想DOMツリーを渡して、 document.createElementにnodeNameを渡してHTML elementを作成している
+  // elementにしないとsetAttributeが使えないので、nodeの情報からelementを作成している
+  // setAttributeは、elementのインターフェースから提供されている
   const element = document.createElement(node.nodeName);
   // targetのエレメントに属性群を追加する(イベントもあるならイベントを追加する)
   setAttributes(element, node.attributes);
@@ -84,26 +85,26 @@ enum ChangedType {
 }
 
 // 受け取った2つの仮想DOMの差分を検知する
-function detectVirtualDOMDifference(node1: NodeType, node2: NodeType): ChangedType {
+function detectVirtualDOMDifference(oldNode: NodeType, newNode: NodeType): ChangedType {
   // different type
-  if (typeof node1 != typeof node2) {
+  if (typeof oldNode != typeof newNode) {
     return ChangedType.Type;
   }
 
   // different text
-  if (!isVNode(node1) && node1 !== node2) {
+  if (!isVNode(oldNode) && oldNode !== newNode) {
     return ChangedType.Text;
   }
 
   // 簡易的比較
-  if (isVNode(node1) && isVNode(node2)) {
-    if (node1.nodeName !== node2.nodeName) {
+  if (isVNode(oldNode) && isVNode(newNode)) {
+    if (oldNode.nodeName !== newNode.nodeName) {
       return ChangedType.Node;
     }
-    if (node1.attributes.value !== node2.attributes.value) {
+    if (oldNode.attributes?.value !== newNode.attributes?.value) {
       return ChangedType.Value;
     }
-    if (JSON.stringify(node1.attributes) !== JSON.stringify(node2.attributes)) {
+    if (JSON.stringify(oldNode.attributes) !== JSON.stringify(newNode.attributes)) {
       return ChangedType.Attr;
     }
   }
@@ -116,12 +117,14 @@ function detectVirtualDOMDifference(node1: NodeType, node2: NodeType): ChangedTy
 // updateElementメソッドに変更前後の仮想DOMツリーを渡すことで、差分がある箇所だけリアルDOMに反映する。
 export function updateElement(parent: HTMLElement, oldNode: NodeType, newNode: NodeType, index = 0) {
   // oldNodeがない場合は新しいnodeをparentに追加する
-  if (!oldNode) {
+  if (typeof oldNode === "undefined") {
     parent.appendChild(createElement(newNode));
     return;
   }
 
   // ペアレントの最初の子ノードを取得する
+  // つまり、updateElementを初回で呼び出す場合、parentは#appのnode。
+  // つまり、updateElementを初回で呼び出す場合、targetは仮想DOMツリーのルートノードであることがわかる
   const target = parent.childNodes[index];
 
   // newNodeがない場合、そのノードを削除する
@@ -131,6 +134,7 @@ export function updateElement(parent: HTMLElement, oldNode: NodeType, newNode: N
   }
 
   // 差分検知をして、バッチ処理を行う
+  // nodeに含まれるnodeNameに応じて変化しているかをチェックする。nodeに含まれるnodeは見ないで一つのnodeだけを見る
   const changeType = detectVirtualDOMDifference(oldNode, newNode);
 
   switch (changeType) {
@@ -140,23 +144,16 @@ export function updateElement(parent: HTMLElement, oldNode: NodeType, newNode: N
     case ChangedType.Node:
       // parent(ルートノード)のchildをreplaceする
       // 最初にnewChildを指定する。次にoldChildを指定する
-      // 新しい仮想DOMツリーで、最初の子ノードを置き換える
+      // ノードの変化がある部分だけ置き換える。仮想DOMツリーで全部置き換えるってわけではない
       parent.replaceChild(createElement(newNode), target)
     case ChangedType.Value:
       // valueの変更時にNodeを置き換えてしまうとフォーカスが外れてしまうため
       // DOMツリーのnodeにあるvalueを更新している
-      updateValue(
-        target as HTMLInputElement,
-        (newNode as VNode).attributes.value as string
-      )
+      updateValue(target as HTMLInputElement, (newNode as VNode).attributes?.value as string)
       return;
     case ChangedType.Attr:
       // DOMツリーのノードのattributesを更新している
-      updateAttributes(
-        target as HTMLElement,
-        (oldNode as VNode).attributes,
-        (newNode as VNode).attributes
-      )
+      updateAttributes(target as HTMLElement, (oldNode as VNode).attributes, (newNode as VNode).attributes)
       return;
   }
 
