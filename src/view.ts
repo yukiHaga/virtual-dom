@@ -146,6 +146,7 @@ export function updateElement(parent: HTMLElement, oldNode: NodeType, newNode: N
       // 最初にnewChildを指定する。次にoldChildを指定する
       // ノードの変化がある部分だけ置き換える。仮想DOMツリーで全部置き換えるってわけではない
       parent.replaceChild(createElement(newNode), target)
+      return;
     case ChangedType.Value:
       // valueの変更時にNodeを置き換えてしまうとフォーカスが外れてしまうため
       // DOMツリーのnodeにあるvalueを更新している
